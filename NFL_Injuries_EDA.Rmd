@@ -1,0 +1,285 @@
+---
+title: "Trends In NFL Injuries Over Time (2009-2020)"
+author: "Lauren Mock"
+date: "12/15/2021"
+output: pdf_document
+---
+
+#### I worked on this file independently as part of a group project in a data science course at Harvard. This file contains my exploratory data analysis to answer the following question: how have NFL injuries changed over time? My group members explored different questions.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+# load libraries
+library(tidyverse)
+library(ggplot2)
+library(ggthemes)
+library(pander)
+library(forcats)
+library(RColorBrewer)
+```
+
+
+## Read in and clean NFL injury data (web scraped by my team member)
+
+```{r}
+# read in data
+injuries <- read.csv("../BST_260/BST_260_Project/Data/all_injuries_clean.csv", 
+                     stringsAsFactors = FALSE)
+
+# new column for total injuries (sum over all injury types)
+injuries <- injuries %>%
+  mutate(total_injuries = select(injuries, c("head", "shoulder", "upper_torso", 
+                                             "lower_torso", "arm", "hand", 
+                                             "leg", "foot")) %>% rowSums)
+
+injuries <- injuries %>%
+  filter(year != 2021) %>% # filter out 2021 (incomplete data for current season)
+  filter(total_injuries != 0) # filter out people who missed games due to illness, etc.
+
+# print column names
+names(injuries)
+```
+
+Each row has a unique combination of player name and year (which is the season). The columns called "head," "shoulder," etc. include counts of the number of head/shoulder injuries a given player had during a given season. The "total_injuries" column is a sum of all injuries a given player had in a given year. It is important to note that due to incomplete data among non-injured players, this dataset only includes players who were *injured*.
+
+## Look at total injuries per season
+
+```{r}
+# create summary table
+inj_by_year <- injuries %>%
+  group_by(year) %>%
+  dplyr::summarize(total_injuries = sum(total_injuries))
+
+# view table
+pander(inj_by_year)
+
+# plot
+inj_by_year %>%
+  ggplot(aes(x = year, y = total_injuries)) +
+  geom_line() +
+  ggtitle("NFL Injuries per Season") +
+  xlab("Season") +
+  ylab("Number of Injuries") +
+  ylim(0, 3000) +
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) + # change x-axis ticks
+  theme_hc()
+```
+
+## Distribution of number of injuries per player
+
+```{r}
+injuries %>%
+  ggplot(aes(x = as.factor(year), y = total_injuries)) +
+  geom_boxplot(fill = "lightblue") +
+  ggtitle("Number of Injuries per Player") +
+  xlab("Season") +
+  ylab("Injuries per Player") +
+  theme_hc()
+```
+
+The median number of injuries per player, among players who were injured, was 1 in every season.
+
+## Injuries per season by team
+
+I will highlight the New England Patriots to see how injuries among players on this team compare to injuries among players on other teams.
+
+```{r, message=FALSE}
+# create summary table
+inj_by_team <- injuries %>%
+  group_by(year, full_team) %>%
+  dplyr::summarize(total_injuries = sum(total_injuries))
+
+# view table
+pander(head(inj_by_team))
+
+
+# plot
+inj_by_team %>%
+  ggplot() +
+  geom_line(aes(x = year, y = total_injuries, group = full_team), 
+            color = "grey40", alpha = 0.3) +
+  # highlight one team in red
+  geom_line(aes(x = year, y = total_injuries, color = "New England Patriots"), size = 1.1, 
+            data = filter(inj_by_team, full_team == "New England Patriots")) +
+  ggtitle("Injuries per Season by Team") +
+  xlab("Season") +
+  ylab("Number of Injuries per Team") +
+  ylim(0, 175) +
+  labs(color = "") + # remove legend title
+  scale_color_manual(values = c("New England Patriots" = "red")) + # manual legend
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme_classic() +
+  theme(legend.position = c(.95, .95), 
+        legend.justification = c("right", "top")) # legend position
+```
+
+There is substantial variation in injuries by team, but the overall trends over time are similar.
+
+## Total concussions per season: concussions have been a major focus in recent conversations about football, so let's see if the number of concussions per season have declined over time
+
+```{r}
+# create summary table
+concussions <- injuries %>%
+  group_by(year) %>%
+  dplyr::summarize(head = sum(head))
+
+#view table
+pander(concussions)
+
+# plot
+concussions %>%
+  ggplot(aes(x = year, y = head)) +
+  geom_line() +
+  ggtitle("Concussions per Season") +
+  xlab("Season") +
+  ylab("Number of Concussions") +
+  ylim(0, 300) +
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme_hc()
+```
+
+It looks like the number of concussions per season have declined over time.
+
+### Concussions per season by team
+
+```{r, message=FALSE}
+concussions_team <- injuries %>%
+  group_by(year, full_team) %>%
+  dplyr::summarize(head = sum(head))
+
+# view table
+pander(head(concussions_team))
+
+concussions_team %>%
+  ggplot() +
+  geom_line(aes(x = year, y = head, group = full_team), color = "grey40", alpha = 0.3) +
+  geom_line(aes(x = year, y = head, color = "New England Patriots"), size = 1.1,
+            data = filter(concussions_team, full_team == "New England Patriots")) +
+  ggtitle("Concussions per Season by Team") +
+  xlab("Season") +
+  ylab("Number of Concussions per Team") +
+  ylim(0, 20) +
+  labs(color = "") + # remove legend title
+  scale_color_manual(values = c("New England Patriots" = "red")) + # manual legend
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme_classic() +
+  theme(legend.position = c(.95, .95), 
+        legend.justification = c("right", "top")) # legend position
+```
+
+There appears to be substantial variation here, but the overall trend still appears to be declining.
+
+## Injuries over time by injury type
+
+```{r, message=FALSE}
+# gather into long format for ggplot
+gathered <- injuries %>%
+  gather(key = broad_injury, value = broad_count, c("head", "shoulder", "upper_torso", 
+                                                    "lower_torso", "arm", "hand", 
+                                                    "leg", "foot"))
+
+# create summary table
+gathered <- gathered %>%
+  group_by(year, broad_injury) %>%
+  dplyr::summarise(broad_count = sum(broad_count))
+
+# view table
+pander(head(gathered))
+
+# plot
+gathered %>%
+  ggplot(aes(x = year, y = broad_count, group = broad_injury,
+             color = fct_reorder2(broad_injury, year, broad_count))) + # reorder legend
+  geom_line(size = 0.8) +
+  ggtitle("Injuries per Season by Injury Type") +
+  xlab("Season") +
+  ylab("Injuries per Season (log scale)") +
+  scale_y_log10() +
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  labs(color = "Injury Type") + # legend title
+  scale_color_brewer(palette = "Set2",
+                       labels = c("Leg", "Foot", "Head", 
+                                  "Upper Torso", "Shoulder", 
+                                  "Lower Torso", "Hand", "Arm")) + # nice label names
+  theme_classic()
+```
+
+Leg and foot injuries were the most common across all seasons.
+
+## ...as a barplot
+
+```{r}
+gathered$broad_injury <- as.factor(gathered$broad_injury) # convert to factor
+
+# stacked barplot
+gathered %>%
+  ggplot(aes(x = year, y = broad_count, 
+             fill = fct_reorder(broad_injury, broad_count))) + # reorder stacked bars
+  geom_bar(stat = "identity", color = "gray40") + 
+  ggtitle("Injury Type by Year") +
+  xlab("Season") +
+  ylab("Number of Injuries") +
+  labs(fill = "Injury Type") + # legend title
+  scale_fill_brewer(palette = "Set3", direction = -1, # use palette in reverse order
+                    labels = c("Arm", "Lower Torso", "Hand", 
+                               "Shoulder", "Head", "Upper Torso", 
+                               "Foot", "Leg")) + # fix legend colors and labels
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme(panel.background = element_blank()) + # remove grid lines
+  theme(legend.position = "right")
+```
+
+The breakdown by injury type is similar across all seasons. The declining trend in the number of injuries per season also appears consistent across all injury types.
+
+## Games missed and played injured per season
+
+```{r, fig.width=8, fig.height=5}
+### games missed
+# create summary table
+games_missed <- injuries %>%
+  group_by(year) %>%
+  dplyr::summarize(avg_games_missed = mean(num_games_missing))
+
+# view table
+pander(games_missed)
+
+# plot
+games_missed %>%
+  ggplot(aes(x = year, y = avg_games_missed)) +
+  geom_line() +
+  ylim(0, 7) +
+  ggtitle("Average Number of Games Missed among Injured Players") +
+  xlab("Season") +
+  ylab("Average Number of Games Missed") +
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme_hc()
+
+
+### games injured
+# create summary table
+games_injured <- injuries %>%
+  group_by(year) %>%
+  dplyr::summarize(avg_games_injured = mean(num_games_injured))
+
+# view table
+pander(games_injured)
+
+# plot
+games_injured %>%
+  ggplot(aes(x = year, y = avg_games_injured)) +
+  geom_line() +
+  ylim(0, 7) +
+  ggtitle("Average Number of Games Injured among Injured Players") +
+  xlab("Season") +
+  ylab("Avgerage Number of Games Injured") +
+  scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
+  theme_hc()
+```
+
+The plots actually show entirely different trends, highlighting the importance of exploring any data set extensively before drawing conclusions about the data. In the first plot, we see the there a spike in the number of games missed due to injury from 2016-2018, which corresponds with a sharp drop in raw injury counts in the other plots. It is possible that in these years players had fewer injuries than in prior years, but these injuries were more severe, leading to more games missed per injury. It is also possible that new rules force injured players to sit out of games even when they want to play through their injuries.  
+
+The second plot depicts a more consistent trend in games played while injured with a steep drop-off in 2019. It is interesting to note that the trends in these two plots match reasonably well from 2016 to 2020, with the number of games injured only slightly higher than the number of games missed due to injury. Before 2016, it appears that there were many more games played while injured, because the number of games injured is much higher than the number of games missed. This may be due to changes in NFL rules that prevent injured players from injuring themselves further by continuing to play.
