@@ -9,7 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#### I prepared the following material independently for a group project in a data science course at Harvard. This file contains my exploratory data analysis to answer the following question: how have NFL injuries changed over time? Each member of my group addressed a different question.
+#### I prepared this material independently for a group project in a data science course at Harvard. This file contains my exploratory data analysis to answer the following question: how have NFL injuries changed over time? Each member of my group addressed a different question.
 ##  
 ```{r, message = FALSE}
 # load libraries
@@ -213,7 +213,7 @@ gathered %>%
   scale_color_brewer(palette = "Set2",
                        labels = c("Leg", "Foot", "Head", 
                                   "Upper Torso", "Shoulder", 
-                                  "Lower Torso", "Hand", "Arm")) + # nice label names
+                                  "Lower Torso", "Hand", "Arm")) + # nice legend names
   theme_classic()
 ```
 
@@ -295,4 +295,4 @@ These last two plots show entirely different trends than the trends in the previ
 
 In the first plot, we see the there a spike in the number of games missed due to injury from 2016-2018, which corresponds with a sharp drop in raw injury counts in the other plots. It is possible that in these years players had fewer injuries than in prior years, but these injuries were more severe, leading to more games missed per injury. It is also possible that new rules forced injured players to sit out of games even when they wanted to play through their injuries.
 
-The second plot depicts a more consistent trend in games injured with a steep drop-off in 2019. It is interesting to note that the trends in these two plots match reasonably well from 2016 to 2020, with the number of games that occur while injure only slightly higher than the number of games missed due to injury. Before 2016, it appears that there were many more games played while injured, because the number of games that occur while injured is much higher than the number of games missed. This may be due to changes in NFL rules that prevent injured players from injuring themselves further by continuing to play.
+The second plot depicts a more consistent trend in games occurring while injured with a steep drop-off in 2019. It is interesting to note that the trends in these two plots match reasonably well from 2016 to 2020, with the number of games that occur while injured only slightly higher than the number of games missed due to injury. Before 2016, it appears that there were many more games played while injured, because the number of games that occur while injured is much higher than the number of games missed. This may be due to changes in NFL rules that prevent injured players from injuring themselves further by continuing to play.
